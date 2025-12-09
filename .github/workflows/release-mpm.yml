@@ -1,0 +1,188 @@
+name: Reusable MPM Release
+
+on:
+  workflow_call:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        type: string
+      notes:
+        description: "Release notes / changes in this update"
+        required: false
+        type: string
+      shouldBuildWebsiteDocumentation:
+        description: "Build website documentation? (true/false)"
+        required: true
+        type: string
+      shouldPackageForDistribution:
+        description: "Package for distribution? (true/false)"
+        required: true
+        type: string
+    secrets:
+      MPM_REPO_PAT:
+        required: true
+      # Optional: uncomment if you use a MATLAB license token
+      # MW_LICENSE_TOKEN:
+      #   required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      # 1) Calling repo (MATLAB package under release)
+      - name: Check out calling repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 2) Doc tooling that lives alongside the calling repo
+      - name: Check out class-docs
+        uses: actions/checkout@v4
+        with:
+          repository: JeffreyEarly/class-docs
+          path: tools/class-docs
+          fetch-depth: 0
+
+      - name: Check out class-annotations
+        uses: actions/checkout@v4
+        with:
+          repository: JeffreyEarly/class-annotations
+          path: tools/class-annotations
+          fetch-depth: 0
+
+      # 3) OceanKit itself (for ci_release.m, update_changelog.m, and as MPM repo)
+      - name: Check out OceanKit
+        uses: actions/checkout@v4
+        with:
+          repository: JeffreyEarly/OceanKit
+          path: OceanKit
+          token: ${{ secrets.MPM_REPO_PAT }}
+          fetch-depth: 0
+
+      - name: Set up MATLAB
+        uses: matlab-actions/setup-matlab@v2
+        # If you have a license token, uncomment:
+        # with:
+        #   token: ${{ secrets.MW_LICENSE_TOKEN }}
+
+      - name: Bump version, update changelog, build docs, export MPM package
+        uses: matlab-actions/run-command@v2
+        with:
+          command: |
+            % Add calling-repo tools (e.g. build_website_documentation.m)
+            addpath("tools");
+            addpath(genpath("tools/class-docs"));
+            addpath(genpath("tools/class-annotations"));
+
+            % Add shared release tooling from OceanKit
+            addpath("OceanKit/tools");
+
+            opts = struct;
+            opts.rootDir = pwd;  % root of the calling repo
+            opts.bumpType = "${{ inputs.bump }}";
+            opts.notes = "${{ inputs.notes }}";
+            opts.shouldBuildWebsiteDocumentation = ${{ inputs.shouldBuildWebsiteDocumentation }};
+            opts.shouldPackageForDistribution = ${{ inputs.shouldPackageForDistribution }};
+
+            options = namedargs2cell(opts);
+            ci_release(options{:});
+
+      - name: Read release metadata from MATLAB
+        id: meta
+        run: |
+          META_FILE="dist/mpm_release_metadata.txt"
+          if [ ! -f "$META_FILE" ]; then
+            echo "Metadata file $META_FILE not found"; exit 1
+          fi
+          cat "$META_FILE"
+          NAME=$(grep '^NAME=' "$META_FILE" | cut -d'=' -f2)
+          VERSION=$(grep '^VERSION=' "$META_FILE" | cut -d'=' -f2)
+          FOLDER=$(grep '^FOLDER=' "$META_FILE" | cut -d'=' -f2)
+          echo "name=$NAME"      >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "folder=$FOLDER"   >> $GITHUB_OUTPUT
+
+      - name: Commit version bump (and docs/changelog) in calling repo
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Always add the updated mpackage.json
+          if [ -f resources/mpackage.json ]; then
+            git add resources/mpackage.json
+          fi
+
+          # Conditionally add CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            echo "Adding CHANGELOG.md"
+            git add CHANGELOG.md
+          else
+            echo "CHANGELOG.md not found — skipping"
+          fi
+
+          # Conditionally add docs directory
+          if [ -d docs ]; then
+            echo "Adding docs/"
+            git add docs
+          else
+            echo "docs/ directory not found — skipping"
+          fi
+
+          # If nothing staged, skip commit
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Bump version to v${VERSION}"
+          git push origin HEAD
+
+      - name: Create git tag and GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ steps.meta.outputs.version }}
+          NOTES: ${{ inputs.notes }}
+        run: |
+          echo "Creating tag $TAG"
+
+          git tag "$TAG"
+          git push origin "$TAG"
+
+          if [ -z "$NOTES" ]; then
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG" \
+              --generate-notes
+          else
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$TAG" \
+              --notes "$NOTES"
+          fi
+
+      - name: Copy package into OceanKit (MPM repo)
+        run: |
+          echo "Copying dist/${{ steps.meta.outputs.folder }} -> OceanKit/"
+          rsync -av "dist/${{ steps.meta.outputs.folder }}/" "OceanKit/${{ steps.meta.outputs.folder }}/"
+
+      - name: Commit and push to OceanKit
+        working-directory: OceanKit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add .
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit in OceanKit."
+            exit 0
+          fi
+
+          git commit -m "Add ${{ steps.meta.outputs.folder }} (from $GITHUB_REPOSITORY@$GITHUB_SHA)"
+          git push
