@@ -12,12 +12,14 @@
     "email": "jearly@nwra.com",
     "url": "https://github.com/JeffreyEarly/class-annotations"
   },
-  "folders": {
-    "path": "UnitTests",
-    "languages": [
-      "matlab"
-    ]
-  },
+  "folders": [
+      {
+          "path": "UnitTests",
+          "languages": [
+              "matlab"
+          ]
+      }
+  ],
   "dependencies": [],
   "releaseCompatibility": ">=R2024b",
   "schemaVersion": "1.1.0"
