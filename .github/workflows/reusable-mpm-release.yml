@@ -65,6 +65,9 @@ jobs:
 
       - name: Set up MATLAB
         uses: matlab-actions/setup-matlab@v2
+        with:
+          release: R2025bU1
+          cache: true
         # If you have a license token, uncomment:
         # with:
         #   token: ${{ secrets.MW_LICENSE_TOKEN }}
