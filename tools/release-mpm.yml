@@ -1,0 +1,51 @@
+name: Release MPM package
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - none
+          - patch
+          - minor
+          - major
+      notes:
+        description: "Release notes / changes in this update"
+        required: false
+        default: ""
+        type: string
+      shouldBuildWebsiteDocumentation:
+        description: "Build website documentation?"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - true
+          - false
+      shouldPackageForDistribution:
+        description: "Package for distribution?"
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - true
+          - false
+
+permissions:
+  contents: write
+
+jobs:
+  call-reusable-release:
+    uses: JeffreyEarly/OceanKit/.github/workflows/reusable-mpm-release.yml@main
+    with:
+      bump: ${{ github.event.inputs.bump }}
+      notes: ${{ github.event.inputs.notes }}
+      shouldBuildWebsiteDocumentation: ${{ github.event.inputs.shouldBuildWebsiteDocumentation }}
+      shouldPackageForDistribution: ${{ github.event.inputs.shouldPackageForDistribution }}
+    secrets:
+      MPM_REPO_PAT: ${{ secrets.MPM_REPO_PAT }}
+      # MW_LICENSE_TOKEN: ${{ secrets.MW_LICENSE_TOKEN }}  # if needed
