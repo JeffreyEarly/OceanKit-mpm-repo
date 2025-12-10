@@ -33,4 +33,5 @@ with authoring enabled.
 - [core-spline](https://github.com/JeffreyEarly/spline-core) Core b-spline classes.
 - [distributions](https://github.com/JeffreyEarly/distributions) Class for distributions and stochastic modeling
 - [geographic-projection](https://github.com/JeffreyEarly/geographic-projection) Tools for projecting geographic coordinates (latitude, longitude) onto transverse Mercator (x,y).
+- [internal-modes](https://github.com/JeffreyEarly/internal-modes) Quickly and accurately compute the vertical modes for arbitrary stratification.
 - [wave-vortex-model-diagnostics](https://github.com/Energy-Pathways-Group/wave-vortex-model-diagnostics) Diagnostic tools for the WaveVortexModel
