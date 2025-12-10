@@ -1,0 +1,26 @@
+{
+    "name": "GeographicProjection",
+    "version": "1.0.0",
+    "id": "1d23ded6-e7f9-454a-8544-25bb0b8a216a",
+    "formerNames": [],
+    "displayName": "Geographic Projection",
+    "summary": "Tools for projecting geostrophic coordinates",
+    "description": "Tools for projecting geographic coordinates onto transverse Mercator",
+    "provider": {
+        "name": "Jeffrey J. Early",
+        "organization": "NorthWest Research Associates",
+        "email": "jearly@nwra.com",
+        "url": "https://github.com/JeffreyEarly/geographic-projection"
+    },
+    "folders": [
+        {
+            "path": "UnitTests",
+            "languages": [
+                "matlab"
+            ]
+        }
+    ],
+    "dependencies": [],
+    "releaseCompatibility": ">=R2024b",
+    "schemaVersion": "1.1.0"
+}
