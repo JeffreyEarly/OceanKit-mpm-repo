@@ -3,84 +3,68 @@ arguments
     options.rootDir = ".."
     options.bumpType = "none"
     options.notes string = ""
-    options.shouldBuildWebsiteDocumentation = false
-    options.shouldPackageForDistribution = false
-    options.dist_folder = "dist"
-    options.excluded_dist_folders = [".git", ".github", "docs", "tools", "Documentation"]
+    options.shouldBuildWebsiteDocumentation (1,1) logical = false
+    options.shouldPackageForDistribution (1,1) logical = false
+    options.dist_folder (1,1) string = "dist"
+    options.excluded_dist_folders string = [".git", ".github", "docs", "tools", "Documentation"]
 end
 %CI_RELEASE CI entry point for MPM release.
 %   CI_RELEASE(options) where
 %       options.bumpType is "patch", "minor", or "major". If it is left
 %
 %   Steps:
-%     1) Bump version in resources/mpackage.json
+%     1) Bump version in resources/mpackage.json using matlab.mpm.Package
 %     2) Run custom documentation build
 %     3) Export package root to dist/<name>-<version> for MPM repo
+%
+%   This script assumes that options.rootDir points at the *package root*,
+%   i.e. the folder that contains the resources/mpackage.json file.
 
-if ~isfield(options,"rootDir")
-    options.rootDir = pwd;
-end
+% 1) Read package metadata and bump version (semantic x.y.z) if requested
 
-%% bump the version number, if requested
 mpkgPath = fullfile(options.rootDir, "resources", "mpackage.json");
 if ~isfile(mpkgPath)
-    error("ci_release:mpackageNotFound", ...
-        "Could not find mpackage.json at %s", mpkgPath);
+    error("ci_release:mpackageNotFound", "Could not find mpackage.json at %s", mpkgPath);
 end
 
-% 1) Read and bump version (semantic x.y.z)
-txt = fileread(mpkgPath);
-cfg = jsondecode(txt);
+% Create a matlab.mpm.Package object for this root folder. Modifying
+% properties on this object updates mpackage.json for us.
+pkg = matlab.mpm.Package(options.rootDir);
 
-if ~isfield(cfg,"version")
-    error("ci_release:noVersionField", ...
-        "mpackage.json does not have a 'version' field.");
+pkgName       = string(pkg.Name);
+currentVerObj = pkg.Version;
+oldVer        = string(currentVerObj);
+
+bumpType = string(options.bumpType);
+bumpType = lower(bumpType);
+
+switch bumpType
+    case "major"
+        newVerObj = matlab.mpm.Version(currentVerObj.Major + 1, 0, 0);
+    case "minor"
+        newVerObj = matlab.mpm.Version(currentVerObj.Major, currentVerObj.Minor + 1, 0);
+    case "patch"
+        newVerObj = matlab.mpm.Version(currentVerObj.Major, currentVerObj.Minor, currentVerObj.Patch + 1);
+    otherwise
+        % "none" or anything else: keep existing version
+        newVerObj = currentVerObj;
 end
-if ~isfield(cfg,"name")
-    error("ci_release:noNameField", ...
-        "mpackage.json does not have a 'name' field.");
-end
 
-oldVer = string(cfg.version);
-tokens = regexp(oldVer, "^(\d+)\.(\d+)\.(\d+)$", "tokens", "once");
-if isempty(tokens)
-    error("ci_release:badVersion", ...
-        "Existing version '%s' is not of the form x.y.z", oldVer);
-end
-major = str2double(tokens{1});
-minor = str2double(tokens{2});
-patch = str2double(tokens{3});
-
-if options.bumpType ~= "none"
-    switch options.bumpType
-        case "major"
-            major = major + 1;
-            minor = 0;
-            patch = 0;
-        case "minor"
-            minor = minor + 1;
-            patch = 0;
-        case "patch"
-            patch = patch + 1;
-    end
-
-    newVer = sprintf('%d.%d.%d', major, minor, patch);
-    cfg.version = newVer;
-
-    fprintf('Bumping version: %s -> %s (%s)\n', oldVer, newVer, options.bumpType);
-
-    % Write back pretty JSON (R2021b+ supports PrettyPrint)
-    jsonStr = jsonencode(cfg, PrettyPrint=true);
-    fid = fopen(mpkgPath, 'w');
-    assert(fid ~= -1, "Could not open mpackage.json for writing");
-    fwrite(fid, jsonStr);
-    fclose(fid);
-
-    %% If we bumped the version, and were handed notes, record that
-    changelogPath = fullfile(options.rootDir, "CHANGELOG.md");
-    update_changelog(changelogPath,options.notes,newVer);
+% If we are actually bumping, assign back to the package so that
+% mpackage.json is rewritten by MATLAB Package Manager.
+if bumpType == "major" || bumpType == "minor" || bumpType == "patch"
+    pkg.Version = newVerObj;
+    fprintf('Bumping version: %s -> %s (%s)\n', oldVer, string(newVerObj), bumpType);
 else
-    newVer = sprintf('%d.%d.%d', major, minor, patch);
+    fprintf('Not bumping version (current version %s)\n', oldVer);
+end
+
+newVer = string(newVerObj);
+
+% If we bumped the version and have release notes, update the changelog.
+if (bumpType == "major" || bumpType == "minor" || bumpType == "patch") && strlength(strtrim(options.notes)) > 0
+    changelogPath = fullfile(options.rootDir, "CHANGELOG.md");
+    update_changelog(changelogPath, options.notes, newVer);
 end
 
 %% 2) Run your custom documentation build
@@ -96,7 +80,6 @@ end
 %% 3) Export package root to dist/<name>-<version> for MPM repo
 
 if options.shouldPackageForDistribution == true
-    pkgName = string(cfg.name);
     distDir = fullfile(options.rootDir, options.dist_folder);
     if ~isfolder(distDir)
         mkdir(distDir);
@@ -115,7 +98,7 @@ if options.shouldPackageForDistribution == true
 
     % Strip CI-only junk from the exported package
     % (best-effort: ignore errors if these don't exist)
-    for iFolder = 1:length(options.excluded_dist_folders)
+    for iFolder = 1:numel(options.excluded_dist_folders)
         try
             rmdir(fullfile(targetRoot, options.excluded_dist_folders(iFolder)), "s");
         catch
@@ -131,8 +114,7 @@ if options.shouldPackageForDistribution == true
     metaPath = fullfile(distDir, "mpm_release_metadata.txt");
     fid = fopen(metaPath, "w");
     assert(fid ~= -1, "Could not open metadata file for writing");
-    fprintf(fid, "NAME=%s\nVERSION=%s\nFOLDER=%s\n", ...
-        pkgName, newVer, pkgFolderName);
+    fprintf(fid, "NAME=%s\nVERSION=%s\nFOLDER=%s\n", pkgName, newVer, pkgFolderName);
     fclose(fid);
 
     fprintf('ci_release complete: %s %s\n', pkgName, newVer);
