@@ -147,6 +147,7 @@ jobs:
           git push origin HEAD
 
       - name: Create git tag and GitHub release
+        if: ${{ inputs.bump != 'none' }} 
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: v${{ steps.meta.outputs.version }}
