@@ -77,12 +77,18 @@ jobs:
         with:
           command: |
             % Add calling-repo tools (e.g. build_website_documentation.m)
-            addpath("tools");
-            addpath(genpath("tools/class-docs"));
-            addpath(genpath("tools/class-annotations"));
-
-            % Add shared release tooling from OceanKit
+            
+            % add everything at first, but...
+            addpath(genpath("."))
+            
+            % ...this is dangerous, so remove stuff we don't want
+            rmpath(genpath("OceanKit"));
+            rmpath(genpath("tools/class-docs"));
+            rmpath(genpath("tools/class-annotations"));
+            
             addpath("OceanKit/tools");
+            addpath("tools/class-docs");
+            addpath("tools/class-annotations");
 
             opts = struct;
             opts.rootDir = pwd;  % root of the calling repo
