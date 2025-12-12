@@ -20,12 +20,6 @@
             ]
         },
         {
-            "path": "Examples",
-            "languages": [
-                "matlab"
-            ]
-        },
-        {
             "path": "UnitTests",
             "languages": [
                 "matlab"
