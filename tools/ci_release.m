@@ -57,21 +57,21 @@ newVer = string(newVerObj);
 if bumpType == "major" || bumpType == "minor" || bumpType == "patch"
     
     % ideally we use this one command and all is good, but there's a bug!
-    % pkg.Version = newVerObj;
+    pkg.Version = newVerObj;
     
-    mpkgPath = fullfile(options.rootDir, "resources", "mpackage.json");
-    rawJson = fileread(mpkgPath);
-    mpkg = jsondecode(rawJson);
-    mpkg.version = char(newVer);  % keep it JSON-friendly
-    mpkg = ensureArrayOfStructs(mpkg, ["folders","dependencies"]);
-    jsonText = jsonencode(mpkg, PrettyPrint=true);
-    fid = fopen(mpkgPath, "w");
-    if fid < 0
-        error("ci_release:cannotWrite", ...
-            "Could not open %s for writing.", mpkgPath);
-    end
-    cleaner = onCleanup(@() fclose(fid));
-    fprintf(fid, "%s\n", jsonText);
+    % mpkgPath = fullfile(options.rootDir, "resources", "mpackage.json");
+    % rawJson = fileread(mpkgPath);
+    % mpkg = jsondecode(rawJson);
+    % mpkg.version = char(newVer);  % keep it JSON-friendly
+    % mpkg = ensureArrayOfStructs(mpkg, ["folders","dependencies"]);
+    % jsonText = jsonencode(mpkg, PrettyPrint=true);
+    % fid = fopen(mpkgPath, "w");
+    % if fid < 0
+    %     error("ci_release:cannotWrite", ...
+    %         "Could not open %s for writing.", mpkgPath);
+    % end
+    % cleaner = onCleanup(@() fclose(fid));
+    % fprintf(fid, "%s\n", jsonText);
 
     fprintf('Bumping version: %s -> %s (%s)\n', oldVer, string(newVerObj), bumpType);
 else
