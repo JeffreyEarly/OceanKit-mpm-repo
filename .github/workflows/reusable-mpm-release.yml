@@ -85,6 +85,7 @@ jobs:
             ci_release(options{:});
 
       - name: Read release metadata from MATLAB
+        working-directory: my-repo
         id: meta
         run: |
           META_FILE="dist/mpm_release_metadata.txt"
@@ -100,6 +101,7 @@ jobs:
           echo "folder=$FOLDER"   >> $GITHUB_OUTPUT
 
       - name: Commit version bump (and docs/changelog) in calling repo
+        working-directory: my-repo
         env:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
@@ -137,7 +139,8 @@ jobs:
           git push origin HEAD
 
       - name: Create git tag and GitHub release
-        if: ${{ inputs.bump != 'none' }} 
+        working-directory: my-repo
+        if: ${{ inputs.bump != 'none' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: v${{ steps.meta.outputs.version }}
@@ -162,8 +165,8 @@ jobs:
 
       - name: Copy package into OceanKit (MPM repo)
         run: |
-          echo "Copying dist/${{ steps.meta.outputs.folder }} -> OceanKit/"
-          rsync -av "dist/${{ steps.meta.outputs.folder }}/" "OceanKit/${{ steps.meta.outputs.folder }}/"
+          echo "Copying my-repo/dist/${{ steps.meta.outputs.folder }} -> OceanKit/"
+          rsync -av "my-repo/dist/${{ steps.meta.outputs.folder }}/" "OceanKit/${{ steps.meta.outputs.folder }}/"
 
       - name: Commit and push to OceanKit
         working-directory: OceanKit
