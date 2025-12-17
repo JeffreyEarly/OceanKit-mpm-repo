@@ -68,8 +68,8 @@ jobs:
             mpminstall("ClassDocumentation",Prompt=false);
             
             % install this repo and its dependencies
-            pkg = matlab.mpm.Package("my-repo",Authoring=true);
-            mpminstall(pkg,Prompt=false);
+            pkg = matlab.mpm.Package("my-repo");
+            mpminstall(pkg,Prompt=false,Authoring=true);
             
             addpath("OceanKit/tools"); % Add OceanKit tools (e.g. ci_release.m)
             addpath("my-repo/tools"); % Add calling-repo tools (e.g. build_website_documentation.m)
