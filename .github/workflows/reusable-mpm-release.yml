@@ -83,7 +83,15 @@ jobs:
 
             options = namedargs2cell(opts);
             ci_release(options{:});
-
+      - name: Debug dist locations
+        run: |
+          echo "== root dist =="
+          ls -la dist || true
+          echo "== my-repo dist =="
+          ls -la my-repo/dist || true
+          echo "== find metadata =="
+          find . -maxdepth 3 -name mpm_release_metadata.txt -print || true
+          
       - name: Read release metadata from MATLAB
         working-directory: my-repo
         id: meta
