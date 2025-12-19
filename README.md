@@ -15,6 +15,10 @@ mpminstall("WaveVortexModel")
 ```
 will install the [WaveVortexModel](https://wavevortexmodel.org) and its dependencies.
 
+### MATLAB package manager (mpm) usage
+
+The [MATLAB package manager](https://www.mathworks.com/help/matlab/matlab-package-manager.html) has only been available since 2024b and the documentation can be sparse. Here are a few basic commands that can be helpful.
+
 Use
 ```matlab
 mpmsearch(Repository="OceanKit")
